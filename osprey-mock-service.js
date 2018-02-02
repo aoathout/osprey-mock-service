@@ -1,14 +1,14 @@
-var Negotiator = require('negotiator')
-var resources = require('osprey-resources')
-var osprey = require('osprey')
+var Negotiator = require("negotiator");
+var resources = require("osprey-resources");
+var osprey = require("osprey");
 
 /**
  * Export the mock server.
  */
-module.exports = ospreyMockServer
-module.exports.createServer = createServer
-module.exports.createServerFromBaseUri = createServerFromBaseUri
-module.exports.loadFile = loadFile
+module.exports = ospreyMockServer;
+module.exports.createServer = createServer;
+module.exports.createServerFromBaseUri = createServerFromBaseUri;
+module.exports.loadFile = loadFile;
 
 /**
  * Create an Osprey server instance.
@@ -16,8 +16,8 @@ module.exports.loadFile = loadFile
  * @param  {Object}   raml
  * @return {Function}
  */
-function ospreyMockServer (raml) {
-  return resources(raml.resources, handler)
+function ospreyMockServer(raml) {
+  return resources(raml.resources, handler);
 }
 
 /**
@@ -27,14 +27,14 @@ function ospreyMockServer (raml) {
  * @param  {Object}   options
  * @return {Function}
  */
-function createServer (raml, options) {
-  var app = osprey.Router()
+function createServer(raml, options) {
+  var app = osprey.Router();
 
-  app.use(osprey.server(raml, options))
-  app.use(ospreyMockServer(raml))
-  app.use(osprey.errorHandler())
+  app.use(osprey.server(raml, options));
+  app.use(ospreyMockServer(raml));
+  app.use(osprey.errorHandler());
 
-  return app
+  return app;
 }
 
 /**
@@ -44,13 +44,13 @@ function createServer (raml, options) {
  * @param  {Object}   options
  * @return {Function}
  */
-function createServerFromBaseUri (raml, options) {
-  var app = osprey.Router()
-  var path = (raml.baseUri || '').replace(/^(\w+:)?\/\/[^/]+/, '') || '/'
+function createServerFromBaseUri(raml, options) {
+  var app = osprey.Router();
+  var path = (raml.baseUri || "").replace(/^(\w+:)?\/\/[^/]+/, "") || "/";
 
-  app.use(path, raml.baseUriParameters, createServer(raml, options))
+  app.use(path, raml.baseUriParameters, createServer(raml, options));
 
-  return app
+  return app;
 }
 
 /**
@@ -60,16 +60,16 @@ function createServerFromBaseUri (raml, options) {
  * @param  {Object}   options
  * @return {Function}
  */
-function loadFile (filename, options) {
-  return require('raml-1-parser')
+function loadFile(filename, options) {
+  return require("raml-1-parser")
     .loadRAML(filename, { rejectOnErrors: true })
-    .then(function (ramlApi) {
+    .then(function(ramlApi) {
       var raml = ramlApi.expand(true).toJSON({
         serializeMetadata: false
-      })
-      options['RAMLVersion'] = ramlApi.RAMLVersion()
-      return createServerFromBaseUri(raml, options)
-    })
+      });
+      options["RAMLVersion"] = ramlApi.RAMLVersion();
+      return createServerFromBaseUri(raml, options);
+    });
 }
 
 /**
@@ -77,12 +77,12 @@ function loadFile (filename, options) {
  *
  * @param {Object} obj
  */
-function getSingleExample (obj) {
+function getSingleExample(obj) {
   if (obj.examples) {
-    var randomIndex = Math.floor(Math.random() * obj.examples.length)
-    return obj.examples[randomIndex].value
+    var randomIndex = Math.floor(Math.random() * obj.examples.length);
+    return obj.examples[randomIndex].value;
   } else {
-    return obj.example
+    return obj.example;
   }
 }
 
@@ -92,55 +92,58 @@ function getSingleExample (obj) {
  * @param  {Object}   method
  * @return {Function}
  */
-function handler (method) {
-  var statusCode = getStatusCode(method)
-  var response = (method.responses || {})[statusCode] || {}
-  var bodies = response.body || {}
-  var headers = {}
-  var types = Object.keys(bodies)
+function handler(method) {
+  var statusCode = getStatusCode(method);
+  var response = (method.responses || {})[statusCode] || {};
+  var bodies = response.body || {};
+  var headers = {};
+  var types = Object.keys(bodies);
 
   // Set up the default response headers.
   if (response.headers) {
-    response.headers.forEach(function (header) {
+    Object.keys(response.headers).forEach(function(key) {
+      var header = response.headers[key];
       if (header.default) {
-        headers[header.name] = header.default
+        headers[header.name] = header.default;
       } else if (header.example || header.examples) {
-        var example = getSingleExample(header)
-        headers[header.name] = example
+        var example = getSingleExample(header);
+        headers[header.name] = example;
       }
-    })
+    });
   }
 
-  return function (req, res) {
-    var negotiator = new Negotiator(req)
-    var type = negotiator.mediaType(types)
-    var body = bodies[type]
+  return function(req, res) {
+    var negotiator = new Negotiator(req);
+    var type = negotiator.mediaType(types);
+    var body = bodies[type];
 
-    res.statusCode = statusCode
-    setHeaders(res, headers)
+    res.statusCode = statusCode;
+    setHeaders(res, headers);
 
     if (type) {
-      res.setHeader('Content-Type', type)
-      var example = body.example
+      res.setHeader("Content-Type", type);
+      var example = body.example;
 
       // Parse body.examples.
       if (Array.isArray(body.examples)) {
-        example = []
+        example = [];
 
-        body.examples.forEach(function (ex) {
-          var obj = {}
-          obj[ex.name] = ex.structuredValue
-          example.push(obj)
-        })
+        body.examples.forEach(function(ex) {
+          var obj = {};
+          obj[ex.name] = ex.structuredValue;
+          example.push(obj);
+        });
       }
 
       if (example) {
-        res.write(typeof example === 'object' ? JSON.stringify(example) : example)
+        res.write(
+          typeof example === "object" ? JSON.stringify(example) : example
+        );
       }
     }
 
-    res.end()
-  }
+    res.end();
+  };
 }
 
 /**
@@ -149,8 +152,8 @@ function handler (method) {
  * @param  {Object} method
  * @return {Number}
  */
-function getStatusCode (method) {
-  return Object.keys(method.responses || {})[0] || 200
+function getStatusCode(method) {
+  return Object.keys(method.responses || {})[0] || 200;
 }
 
 /**
@@ -159,8 +162,8 @@ function getStatusCode (method) {
  * @param {HTTP.Response} res
  * @param {Object}        headers
  */
-function setHeaders (res, headers) {
-  Object.keys(headers).forEach(function (key) {
-    res.setHeader(key, headers[key])
-  })
+function setHeaders(res, headers) {
+  Object.keys(headers).forEach(function(key) {
+    res.setHeader(key, headers[key]);
+  });
 }
